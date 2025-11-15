@@ -1,9 +1,24 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from app.api import auth, lessons, feedback, stt, tts
 
 app = FastAPI(title="SautiCare Backend", version="0.1.0")
 
-# Register routes
+# --- CORS settings ---
+origins = [
+    "http://localhost:3000",  # React frontend
+    # Add more origins if needed
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],  # allow GET, POST, OPTIONS, etc.
+    allow_headers=["*"],
+)
+
+# --- Register routes ---
 app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
 app.include_router(lessons.router, prefix="/api/lessons", tags=["Lessons"])
 app.include_router(feedback.router, prefix="/api/feedback", tags=["Feedback"])
