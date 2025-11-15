@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api import auth, lessons, feedback, stt, tts,profile
+from . import auth, lessons, feedback, stt, tts,profile
 
 app = FastAPI(title="SautiCare Backend", version="0.1.0")
 
