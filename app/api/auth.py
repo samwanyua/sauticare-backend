@@ -1,11 +1,14 @@
+# api/auth.py
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
-from app.schemas.auth import UserCreate, UserLogin, TokenResponse
-from app.utils.security import hash_password, verify_password, create_access_token
 from app.db.database import SessionLocal
 from app.db.models import User
+from app.utils.security import decode_access_token
 
 router = APIRouter()
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
 def get_db():
     db = SessionLocal()
@@ -14,29 +17,16 @@ def get_db():
     finally:
         db.close()
 
+# New endpoint
+@router.get("/me")
+def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    payload = decode_access_token(token)  # decode JWT to get email
+    email = payload.get("sub")
+    if not email:
+        raise HTTPException(401, "Invalid authentication credentials")
 
-@router.post("/signup")
-def signup(user: UserCreate, db: Session = Depends(get_db)):
-    db_user = db.query(User).filter(User.email == user.email).first()
-    if db_user:
-        raise HTTPException(400, "Email already registered")
+    user = db.query(User).filter(User.email == email).first()
+    if not user:
+        raise HTTPException(404, "User not found")
 
-    hashed = hash_password(user.password)
-    new_user = User(name=user.name, email=user.email, hashed_password=hashed)
-    db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
-
-    return {"message": "User created successfully"}
-
-
-@router.post("/login", response_model=TokenResponse)
-def login(user: UserLogin, db: Session = Depends(get_db)):
-    db_user = db.query(User).filter(User.email == user.email).first()
-
-    if not db_user or not verify_password(user.password, db_user.hashed_password):
-        raise HTTPException(401, "Incorrect email or password")
-
-    token = create_access_token({"sub": db_user.email})
-
-    return TokenResponse(access_token=token)
+    return {"id": user.id, "name": user.name, "email": user.email}
