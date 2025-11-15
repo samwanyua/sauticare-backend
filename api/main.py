@@ -37,4 +37,3 @@ def root():
     return {"message": "SautiCare API is running"}
 
 
-# smainye -> hg

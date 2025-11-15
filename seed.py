@@ -1,7 +1,7 @@
-from app.db.database import SessionLocal, engine, Base
-from app.db import models
+from api.db.database import SessionLocal, engine, Base
+from api.db import models
 from werkzeug.security import generate_password_hash
-from app.utils.security import hash_password
+from api.utils.security import hash_password
 
 # Create tables
 Base.metadata.create_all(bind=engine)
