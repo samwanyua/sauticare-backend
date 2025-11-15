@@ -6,12 +6,12 @@ from sqlalchemy.orm import Session
 from urllib.parse import urlencode
 import requests
 import os
-from .schemas.auth import UserCreate
+from api.schemas.auth import UserCreate
 from fastapi import Body, Form
 
-from .db.database import SessionLocal
-from .db.models import User
-from .utils.security import hash_password, verify_password, create_access_token, decode_access_token
+from api.db.database import SessionLocal
+from api.db.models import User
+from api.utils.security import hash_password, verify_password, create_access_token, decode_access_token
 
 router = APIRouter()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
