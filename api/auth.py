@@ -8,10 +8,10 @@ import requests
 import os
 from fastapi import Body, Form
 
-from api.schemas.auth import UserCreate, UserLogin, TokenResponse
-from api.db.database import SessionLocal
-from api.db.models import User
-from api.utils.security import hash_password, verify_password, create_access_token, decode_access_token
+from .schemas.auth import UserCreate, UserLogin, TokenResponse
+from .db.database import SessionLocal
+from .db.models import User
+from .utils.security import hash_password, verify_password, create_access_token, decode_access_token
 
 router = APIRouter()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
