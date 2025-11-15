@@ -6,7 +6,6 @@ from sqlalchemy.orm import Session
 from urllib.parse import urlencode
 import requests
 import os
-from api.schemas.auth import UserCreate
 from fastapi import Body, Form
 
 from .schemas.auth import UserCreate, UserLogin, TokenResponse
