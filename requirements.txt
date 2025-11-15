@@ -1,7 +1,7 @@
 fastapi
 uvicorn[standard]
 python-multipart
-pydantic
+pydantic_settings
 sqlalchemy
 alembic
 passlib[bcrypt]
