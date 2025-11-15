@@ -13,7 +13,7 @@ def verify_password(plain: str, hashed: str):
 
 def create_access_token(data: dict, expires_delta=None):
     to_encode = data.copy()
-    expire = datetime.utcnow() + (
+    expire = datetime.now() + (
         expires_delta or timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     )
     to_encode.update({"exp": expire})
