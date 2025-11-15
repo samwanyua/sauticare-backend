@@ -6,6 +6,9 @@ from sqlalchemy.orm import Session
 from urllib.parse import urlencode
 import requests
 import os
+from schemas.auth import UserLogin
+from schemas.auth import UserCreate
+from fastapi import Body, Form
 
 from db.database import SessionLocal
 from db.models import User
@@ -26,13 +29,13 @@ def get_db():
 # SIGNUP
 # ------------------------
 @router.post("/signup", status_code=status.HTTP_201_CREATED)
-def signup(name: str, email: str, password: str, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.email == email).first()
+def signup(data: UserCreate, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.email == data.email).first()
     if user:
         raise HTTPException(status_code=400, detail="Email already registered")
 
-    hashed_password = hash_password(password)
-    new_user = User(name=name, email=email, hashed_password=hashed_password)
+    hashed_password = hash_password(data.password)
+    new_user = User(name=data.name, email=data.email, hashed_password=hashed_password)
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
@@ -43,11 +46,20 @@ def signup(name: str, email: str, password: str, db: Session = Depends(get_db)):
 # LOGIN
 # ------------------------
 @router.post("/login")
-def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.email == form_data.username).first()
-    if not user or not verify_password(form_data.password, user.hashed_password):
+def login(
+    db: Session = Depends(get_db),
+    email: str = Body(None),           # JSON body
+    password: str = Body(None),
+    form_data: OAuth2PasswordRequestForm = Depends()  # form-data
+):
+    # Determine which method is used
+    user_email = email or form_data.username
+    user_password = password or form_data.password
+
+    user = db.query(User).filter(User.email == user_email).first()
+    if not user or not verify_password(user_password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
-    
+
     token = create_access_token({"sub": user.email})
     return {"access_token": token, "token_type": "bearer", "email": user.email, "name": user.name}
 
@@ -81,13 +93,22 @@ def logout():
 # RESET PASSWORD
 # ------------------------
 @router.post("/reset-password")
-def reset_password(email: str, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.email == email).first()
+def reset_password(
+    db: Session = Depends(get_db),
+    email: str = Body(None),        # JSON body
+    email_query: str = None          # optional query param
+):
+    user_email = email or email_query
+    if not user_email:
+        raise HTTPException(status_code=400, detail="Email is required")
+
+    user = db.query(User).filter(User.email == user_email).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    
-    # Normally, send email with reset token — placeholder
-    return {"message": f"Password reset link sent to {email}"}
+
+    # Normally send reset email — placeholder
+    return {"message": f"Password reset link sent to {user_email}"}
+
 
 
 # ------------------------
