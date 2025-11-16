@@ -8,7 +8,7 @@ import requests
 import os
 from fastapi import Body, Form
 
-from schemas.auth import UserCreate, UserLogin, TokenResponse
+from api.schemas.auth import UserCreate
 from db.database import SessionLocal
 from db.models import User
 from utils.security import hash_password, verify_password, create_access_token, decode_access_token
