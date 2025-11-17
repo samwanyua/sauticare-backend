@@ -9,3 +9,5 @@ python-jose[cryptography]
 python-dotenv
 requests
 werkzeug
+psycopg2-binary
+passlib[argon2]
