@@ -34,6 +34,7 @@ def startup():
         print(" Database error:", e)
 
 
+
 # --- Register routers ---
 app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
 app.include_router(lessons.router, prefix="/api/lessons", tags=["Lessons"])
