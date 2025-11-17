@@ -1,31 +1,30 @@
 from api.db.database import SessionLocal, engine, Base
 from api.db import models
-from werkzeug.security import generate_password_hash
 from api.utils.security import hash_password
 
-# Create tables
+# Ensure tables exist in Supabase
 Base.metadata.create_all(bind=engine)
 
 db = SessionLocal()
 
+# --- Seed Users ---
 users = [
     {"name": "Sam Wanyua", "email": "sam@example.com", "password": "password123"},
     {"name": "Jane Doe", "email": "jane@example.com", "password": "password456"},
 ]
 
 for u in users:
-    # Check if user already exists
     existing_user = db.query(models.User).filter_by(email=u["email"]).first()
     if not existing_user:
-        db.add(
-            models.User(
-                name=u["name"],
-                email=u["email"],
-                hashed_password=hash_password(u["password"][:72])  # truncate to avoid bcrypt 72-byte limit
-            )
+        new_user = models.User(
+            name=u["name"],
+            email=u["email"],
+            hashed_password=hash_password(u["password"][:72])  
         )
+        db.add(new_user)
 
-# --- Seed lessons ---
+
+# --- Seed Lessons ---
 easy_lessons = [
     "I wash my hands",
     "I drink water",
@@ -95,14 +94,19 @@ hard_lessons = [
     "I maintain overall cleanliness and health awareness"
 ]
 
-lessons = []
 
 def add_lessons(level, lesson_list):
     for i, phrase in enumerate(lesson_list, start=1):
         lesson_id = f"{level.lower()}{i}"
         exists = db.query(models.Lesson).filter_by(id=lesson_id).first()
         if not exists:
-            db.add(models.Lesson(id=lesson_id, level=level, phrase=phrase))
+            new_lesson = models.Lesson(
+                id=lesson_id,
+                level=level,
+                phrase=phrase
+            )
+            db.add(new_lesson)
+
 
 add_lessons("Easy", easy_lessons)
 add_lessons("Medium", medium_lessons)
@@ -110,4 +114,5 @@ add_lessons("Hard", hard_lessons)
 
 db.commit()
 db.close()
-print("Seeding completed with nutrition and hygiene lessons!")
+
+print(" Seeding completed successfully — data stored in Supabase Postgres!")
