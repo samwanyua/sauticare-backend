@@ -1,7 +1,8 @@
 {
   "functions": {
     "main.py": {
-      "runtime": "python3.10"
+      "runtime": "vercel-python@0.5.2"
+
     }
   },
   "routes": [
