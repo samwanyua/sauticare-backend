@@ -25,7 +25,7 @@ app.add_middleware(
 )
 
 # --- Create tables automatically if needed ---
-@app.lifespan("startup")
+@app.startup("startup")
 def startup():
     try:
         Base.metadata.create_all(bind=engine)
