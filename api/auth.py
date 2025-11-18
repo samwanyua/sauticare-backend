@@ -45,22 +45,29 @@ def signup(data: UserCreate, db: Session = Depends(get_db)):
 # LOGIN
 # ------------------------
 @router.post("/login")
-def login(
-    db: Session = Depends(get_db),
-    email: str = Body(None),           # JSON body
-    password: str = Body(None),
-    form_data: OAuth2PasswordRequestForm = Depends()  # form-data
-):
-    # Determine which method is used
-    user_email = email or form_data.username
-    user_password = password or form_data.password
+def login(credentials: dict = Body(...), db: Session = Depends(get_db)):
+    email = credentials.get("email")
+    password = credentials.get("password")
 
-    user = db.query(User).filter(User.email == user_email).first()
-    if not user or not verify_password(user_password, user.hashed_password):
+    if not email or not password:
+        raise HTTPException(status_code=400, detail="Email and password required")
+
+    user = db.query(User).filter(User.email == email).first()
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+
+    if not verify_password(password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
     token = create_access_token({"sub": user.email})
-    return {"access_token": token, "token_type": "bearer", "email": user.email, "name": user.name}
+
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "email": user.email,
+        "name": user.name
+    }
+
 
 # ------------------------
 # CURRENT USER
