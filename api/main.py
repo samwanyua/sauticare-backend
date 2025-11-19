@@ -14,7 +14,7 @@ app = FastAPI(
 origins = [
     "https://speech-tutor-frontend.vercel.app",
     "https://sauticare-4a9padv11-sams-projects-7b510dbf.vercel.app",
-    "https://sauticare-frontend.vercel.app"
+    "https://sauticare-qp5gm66gn-sams-projects-7b510dbf.vercel.app"
 ]
 
 
