@@ -12,8 +12,11 @@ app = FastAPI(
 
 # --- CORS ---
 origins = [
-    "https://speech-tutor-frontend.vercel.app"
+    "https://speech-tutor-frontend.vercel.app",
+    "https://sauticare-4a9padv11-sams-projects-7b510dbf.vercel.app",
+    "https://sauticare-frontend.vercel.app"
 ]
+
 
 app.add_middleware(
     CORSMiddleware,
