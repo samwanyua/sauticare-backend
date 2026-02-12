@@ -1,4 +1,3 @@
-# requirements.txt
 fastapi
 uvicorn[standard]
 python-dotenv
@@ -6,11 +5,7 @@ supabase
 pydantic
 pydantic-settings
 python-multipart
-librosa
-soundfile
-numpy
-jiwer
-gradio-client
 python-jose[cryptography]
 passlib[bcrypt]
-Pillow
+
+
