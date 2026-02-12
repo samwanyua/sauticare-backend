@@ -1,6 +1,6 @@
 # app/utils/supabase_client.py
 from supabase import create_client, Client
-from app.config import settings
+from api.config import settings
 from functools import lru_cache
 
 

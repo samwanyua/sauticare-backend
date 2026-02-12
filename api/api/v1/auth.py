@@ -1,8 +1,8 @@
 # app/api/v1/auth.py
 from fastapi import APIRouter, HTTPException, Depends, status
-from app.schemas.user import UserCreate, UserLogin, Token, UserResponse
-from app.utils.supabase_client import supabase
-from app.dependencies import get_current_user
+from api.schemas.user import UserCreate, UserLogin, Token, UserResponse
+from api.utils.supabase_client import supabase
+from api.dependencies import get_current_user
 from typing import Dict
 
 router = APIRouter(prefix="/auth", tags=["authentication"])

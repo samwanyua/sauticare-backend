@@ -1,7 +1,7 @@
 # app/api/v1/analytics.py
 from fastapi import APIRouter, Depends, HTTPException, Query
-from app.utils.supabase_client import supabase
-from app.dependencies import get_learner_profile, get_current_user
+from api.utils.supabase_client import supabase
+from api.dependencies import get_learner_profile, get_current_user
 from typing import List, Dict, Any
 from datetime import datetime, timedelta
 

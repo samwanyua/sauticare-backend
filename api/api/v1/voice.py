@@ -1,11 +1,11 @@
 # app/api/v1/voice.py
 from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, status
-from app.services.asr_service import asr_service
-from app.services.storage_service import StorageService
-from app.utils.supabase_client import supabase
-from app.dependencies import get_current_user, get_learner_profile, validate_audio_file
-from app.schemas.voice import VoiceUploadResponse, VoiceSampleResponse
-from app.config import settings
+from api.services.asr_service import asr_service
+from api.services.storage_service import StorageService
+from api.utils.supabase_client import supabase
+from api.dependencies import get_current_user, get_learner_profile, validate_audio_file
+from api.schemas.voice import VoiceUploadResponse, VoiceSampleResponse
+from api.config import settings
 from typing import List
 import uuid
 import tempfile

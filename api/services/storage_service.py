@@ -1,7 +1,7 @@
 # app/services/storage_service.py
 from fastapi import UploadFile, HTTPException
-from app.utils.supabase_client import supabase
-from app.config import settings
+from api.utils.supabase_client import supabase
+from api.config import settings
 import uuid
 import os
 from typing import Optional

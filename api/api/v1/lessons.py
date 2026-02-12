@@ -1,8 +1,8 @@
 # app/api/v1/lessons.py
 from fastapi import APIRouter, Depends, HTTPException, status, Query
-from app.utils.supabase_client import supabase
-from app.dependencies import get_current_user, get_learner_profile
-from app.schemas.lesson import LessonResponse, LessonWithPhrases, LessonProgressResponse
+from api.utils.supabase_client import supabase
+from api.dependencies import get_current_user, get_learner_profile
+from api.schemas.lesson import LessonResponse, LessonWithPhrases, LessonProgressResponse
 from typing import List, Optional
 
 router = APIRouter(prefix="/lessons", tags=["lessons"])

@@ -1,6 +1,6 @@
 # app/services/asr_service.py
 from gradio_client import Client, handle_file
-from app.config import settings
+from api.config import settings
 from fastapi import HTTPException
 import tempfile
 import os

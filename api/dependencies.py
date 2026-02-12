@@ -1,8 +1,8 @@
 # app/dependencies.py
 from fastapi import Depends, HTTPException, status, UploadFile
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from app.utils.supabase_client import supabase
-from app.config import settings
+from api.utils.supabase_client import supabase
+from api.config import settings
 from typing import Optional
 import mimetypes
 

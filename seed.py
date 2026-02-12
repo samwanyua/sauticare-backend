@@ -1,6 +1,6 @@
-from app.db.database import SessionLocal, engine, Base
-from app.db import models
-from app.utils.security import hash_password
+from api.db.database import SessionLocal, engine, Base
+from api.db import models
+from api.utils.security import hash_password
 
 # Ensure tables exist in Supabase
 Base.metadata.create_all(bind=engine)

@@ -1,8 +1,8 @@
 # app/main.py
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.config import settings
-from app.api.v1 import auth, voice, lessons, practice, analytics
+from api.config import settings
+from api.api.v1 import auth, voice, lessons, practice, analytics
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
