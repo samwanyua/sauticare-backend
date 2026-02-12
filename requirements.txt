@@ -14,3 +14,4 @@ gradio-client
 python-jose[cryptography]
 passlib[bcrypt]
 Pillow
+email-validator
