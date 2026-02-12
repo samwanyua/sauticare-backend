@@ -1,11 +1,16 @@
+# requirements.txt
 fastapi
 uvicorn[standard]
-python-multipart
-pydantic_settings
-sqlalchemy
-alembic
-passlib[bcrypt]
-python-jose[cryptography]
 python-dotenv
-requests
-werkzeug
+supabase
+pydantic
+pydantic-settings
+python-multipart
+librosa
+soundfile
+numpy
+jiwer
+gradio-client
+python-jose[cryptography]
+passlib[bcrypt]
+Pillow
