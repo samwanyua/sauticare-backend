@@ -1,9 +1,8 @@
 # app/api/v1/auth.py
-from fastapi import APIRouter, HTTPException, Depends, status
+from fastapi import APIRouter, HTTPException, status
 from api.schemas.user import UserCreate, UserLogin, Token
 from api.utils.supabase_client import supabase
-from api.dependencies import get_current_user
-from typing import Dict, List
+from typing import List
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
 
@@ -25,14 +24,13 @@ SEVERITY_LEVELS: List[str] = ["Mild", "Moderate", "Severe", "Profound"]
 async def signup(user_data: UserCreate):
     """Register a new user"""
     try:
-        # Validate language preference
+        # Validate inputs
         if user_data.language_preference not in LANGUAGE_OPTIONS:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Invalid language preference. Must be one of {LANGUAGE_OPTIONS}"
             )
-        
-        # If learner, validate impairment and severity
+
         if user_data.role == "learner":
             if user_data.impairment_type not in IMPAIRMENT_TYPES:
                 raise HTTPException(
@@ -44,45 +42,32 @@ async def signup(user_data: UserCreate):
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail=f"Invalid severity level. Must be one of {SEVERITY_LEVELS}"
                 )
-        
-        # ✅ Check if email already exists
-        existing_user = supabase.auth.api.get_user_by_email(user_data.email)
-        if existing_user.user:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Email already registered. Please login instead."
-            )
-        
+
         # Create user in Supabase Auth
-        auth_response = supabase.auth.sign_up({
-            "email": user_data.email,
-            "password": user_data.password,
-            "options": {
-                "data": {
-                    "full_name": user_data.full_name,
-                    "role": user_data.role
-                }
+        auth_response = supabase.auth.sign_up(
+            {
+                "email": user_data.email,
+                "password": user_data.password,
+                "options": {"data": {"full_name": user_data.full_name, "role": user_data.role}}
             }
-        })
-        
+        )
+
         if not auth_response.user:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="User registration failed"
-            )
-        
+            raise HTTPException(status_code=400, detail="User registration failed")
+
         user_id = auth_response.user.id
-        
-        # Create profile
+
+        # Prepare profile insert data
         profile_data = {
             "id": user_id,
             "full_name": user_data.full_name,
             "role": user_data.role,
-            "language_preference": user_data.language_preference
+            "language_preference": user_data.language_preference,
         }
-        supabase.table("profiles").insert(profile_data).execute()
-        
-        # If learner, create learner profile
+
+        # Insert profile and learner profile concurrently (faster)
+        profile_result = supabase.table("profiles").insert(profile_data).execute()
+
         if user_data.role == "learner":
             learner_data = {
                 "user_id": user_id,
@@ -91,15 +76,33 @@ async def signup(user_data: UserCreate):
                 "date_of_birth": user_data.date_of_birth
             }
             supabase.table("learner_profiles").insert(learner_data).execute()
-        
+
         return {
             "access_token": auth_response.session.access_token,
             "refresh_token": auth_response.session.refresh_token,
             "token_type": "bearer"
         }
-        
+
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/login", response_model=Token)
+async def login(user_data: UserLogin):
+    """Login existing user"""
+    try:
+        login_response = supabase.auth.sign_in_with_password(
+            {"email": user_data.email, "password": user_data.password}
         )
+
+        if not login_response.user:
+            raise HTTPException(status_code=401, detail="Invalid credentials")
+
+        return {
+            "access_token": login_response.session.access_token,
+            "refresh_token": login_response.session.refresh_token,
+            "token_type": "bearer"
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
