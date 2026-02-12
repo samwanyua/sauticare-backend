@@ -45,6 +45,14 @@ async def signup(user_data: UserCreate):
                     detail=f"Invalid severity level. Must be one of {SEVERITY_LEVELS}"
                 )
         
+        # ✅ Check if email already exists
+        existing_user = supabase.auth.api.get_user_by_email(user_data.email)
+        if existing_user.user:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email already registered. Please login instead."
+            )
+        
         # Create user in Supabase Auth
         auth_response = supabase.auth.sign_up({
             "email": user_data.email,
