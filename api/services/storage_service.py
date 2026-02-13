@@ -1,4 +1,4 @@
-# app/services/storage_service.py
+# api/services/storage_service.py
 from fastapi import UploadFile, HTTPException
 from api.utils.supabase_client import supabase
 from api.config import settings
@@ -7,6 +7,7 @@ import os
 from typing import Optional
 import librosa
 import soundfile as sf
+import tempfile
 
 
 class StorageService:
@@ -15,13 +16,16 @@ class StorageService:
     @staticmethod
     async def upload_audio(
         file: UploadFile, 
-        bucket: str = settings.STORAGE_BUCKET_AUDIO,
+        bucket: str = None,
         folder: Optional[str] = None
     ) -> str:
         """Upload audio file to Supabase Storage"""
+        if bucket is None:
+            bucket = settings.STORAGE_BUCKET_AUDIO
+            
         try:
             # Generate unique filename
-            file_extension = file.filename.split(".")[-1]
+            file_extension = file.filename.split(".")[-1] if file.filename else "wav"
             unique_filename = f"{uuid.uuid4()}.{file_extension}"
             
             # Create path
@@ -37,7 +41,7 @@ class StorageService:
             result = supabase.storage.from_(bucket).upload(
                 file_path,
                 content,
-                file_options={"content-type": file.content_type}
+                file_options={"content-type": file.content_type or "audio/wav"}
             )
             
             # Get public URL
@@ -56,11 +60,13 @@ class StorageService:
         """Calculate audio duration in seconds"""
         try:
             # Save temporarily
-            temp_path = f"/tmp/{uuid.uuid4()}.{file.filename.split('.')[-1]}"
-            content = await file.read()
-            
-            with open(temp_path, "wb") as f:
-                f.write(content)
+            with tempfile.NamedTemporaryFile(
+                delete=False, 
+                suffix=f".{file.filename.split('.')[-1]}"
+            ) as temp_file:
+                content = await file.read()
+                temp_file.write(content)
+                temp_path = temp_file.name
             
             # Load audio
             audio, sr = librosa.load(temp_path, sr=None)
@@ -72,7 +78,7 @@ class StorageService:
             # Reset file pointer
             file.file.seek(0)
             
-            return duration
+            return float(duration)
             
         except Exception as e:
             raise HTTPException(
@@ -81,11 +87,55 @@ class StorageService:
             )
     
     @staticmethod
+    async def convert_audio_format(
+        input_path: str, 
+        output_format: str = "wav",
+        sample_rate: int = 16000
+    ) -> str:
+        """Convert audio to specified format"""
+        try:
+            # Load audio
+            audio, sr = librosa.load(input_path, sr=sample_rate)
+            
+            # Create output path
+            output_path = input_path.rsplit(".", 1)[0] + f".{output_format}"
+            
+            # Save in new format
+            sf.write(output_path, audio, sample_rate)
+            
+            return output_path
+            
+        except Exception as e:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Error converting audio: {str(e)}"
+            )
+    
+    @staticmethod
     async def delete_file(file_path: str, bucket: str) -> bool:
         """Delete file from Supabase Storage"""
         try:
+            # Extract just the path from full URL if needed
+            if file_path.startswith("http"):
+                # Extract path after bucket name
+                parts = file_path.split(f"/{bucket}/")
+                if len(parts) > 1:
+                    file_path = parts[1]
+            
             supabase.storage.from_(bucket).remove([file_path])
             return True
         except Exception as e:
             print(f"Error deleting file: {str(e)}")
             return False
+    
+    @staticmethod
+    async def get_file_size(file: UploadFile) -> int:
+        """Get file size in bytes"""
+        file.file.seek(0, 2)  # Seek to end
+        file_size = file.file.tell()
+        file.file.seek(0)  # Reset to beginning
+        return file_size
+
+
+# Singleton instance
+storage_service = StorageService()
