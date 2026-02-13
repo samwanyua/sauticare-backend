@@ -20,7 +20,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include routers
+# Include routers with API V1 prefix
+# The prefix here matches your frontend API_BASE_URL (`/api/v1`)
 app.include_router(auth.router, prefix=settings.API_V1_PREFIX)
 app.include_router(voice.router, prefix=settings.API_V1_PREFIX)
 app.include_router(lessons.router, prefix=settings.API_V1_PREFIX)

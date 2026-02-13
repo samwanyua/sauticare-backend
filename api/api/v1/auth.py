@@ -1,10 +1,14 @@
 # app/api/v1/auth.py
-from fastapi import APIRouter, HTTPException, status
-from api.schemas.user import UserCreate, UserLogin, Token
+from fastapi import APIRouter, HTTPException, status, Depends
+from fastapi.security import OAuth2PasswordBearer
+from api.schemas.user import UserCreate, UserLogin, Token, User as UserSchema
 from api.utils.supabase_client import supabase
-from typing import List
+from typing import List, Optional
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
+
+# OAuth2 dependency for token extraction
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
 # Allowed options
 LANGUAGE_OPTIONS: List[str] = ["English", "Swahili"]
@@ -65,7 +69,6 @@ async def signup(user_data: UserCreate):
             "language_preference": user_data.language_preference,
         }
 
-        # Insert profile and learner profile concurrently (faster)
         profile_result = supabase.table("profiles").insert(profile_data).execute()
 
         if user_data.role == "learner":
@@ -106,3 +109,36 @@ async def login(user_data: UserLogin):
 
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get("/me", response_model=UserSchema)
+async def get_current_user(token: str = Depends(oauth2_scheme)):
+    """Get the current authenticated user"""
+    user_resp = supabase.auth.get_user(token)
+    if not user_resp.user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+
+    profile_resp = supabase.table("profiles").select("*").eq("id", user_resp.user.id).single().execute()
+    if profile_resp.data is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Profile not found")
+
+    user_data = {
+        "id": user_resp.user.id,
+        "full_name": profile_resp.data.get("full_name"),
+        "email": user_resp.user.email,
+        "role": profile_resp.data.get("role"),
+        "language_preference": profile_resp.data.get("language_preference"),
+        "learner_profile": None
+    }
+
+    # Include learner profile if the user is a learner
+    if user_data["role"] == "learner":
+        learner_resp = supabase.table("learner_profiles").select("*").eq("user_id", user_resp.user.id).single().execute()
+        if learner_resp.data:
+            user_data["learner_profile"] = {
+                "impairment_type": learner_resp.data.get("impairment_type"),
+                "severity_level": learner_resp.data.get("severity_level"),
+                "date_of_birth": learner_resp.data.get("date_of_birth")
+            }
+
+    return user_data
