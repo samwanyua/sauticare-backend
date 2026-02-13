@@ -14,11 +14,11 @@ class UserBase(BaseModel):
 class UserCreate(UserBase):
     password: str = Field(..., min_length=8)
     role: Literal["learner", "teacher", "guardian"]
-    language_preference: str = "English"
+    language_preference: Literal ["English","Swahili"]
 
     # Learner-specific fields (optional)
     impairment_type: Optional[str] = None
-    severity_level: Optional[Literal["Mild", "Moderate", "severe"]] = None
+    severity_level: Optional[Literal["Mild", "Moderate", "Severe", "Profound"]] = None
     date_of_birth: Optional[str] = None
 
 
