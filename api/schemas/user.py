@@ -4,6 +4,7 @@ from typing import Optional, Literal
 from datetime import datetime
 from uuid import UUID
 
+# ------------------ Base Schemas ------------------
 
 class UserBase(BaseModel):
     email: EmailStr
@@ -14,7 +15,7 @@ class UserCreate(UserBase):
     password: str = Field(..., min_length=8)
     role: Literal["learner", "teacher", "guardian"]
     language_preference: str = "en-KE"
-    
+
     # Learner-specific fields (optional)
     impairment_type: Optional[str] = None
     severity_level: Optional[Literal["mild", "moderate", "severe"]] = None
@@ -36,12 +37,14 @@ class TokenData(BaseModel):
     user_id: Optional[str] = None
 
 
+# ------------------ Response Schemas ------------------
+
 class UserResponse(UserBase):
     id: UUID
     role: str
     language_preference: str
     created_at: datetime
-    
+
     class Config:
         from_attributes = True
 
@@ -56,6 +59,20 @@ class LearnerProfile(BaseModel):
     teacher_id: Optional[UUID]
     personalization_enabled: bool
     created_at: datetime
-    
+
+    class Config:
+        from_attributes = True
+
+
+# ------------------ Combined User Schema for /me ------------------
+
+class User(BaseModel):
+    id: UUID
+    full_name: str
+    email: EmailStr
+    role: str
+    language_preference: Optional[str] = None
+    learner_profile: Optional[LearnerProfile] = None
+
     class Config:
         from_attributes = True
