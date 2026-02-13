@@ -18,11 +18,24 @@ IMPAIRMENT_TYPES: List[str] = [
     "Neurodevelopmental disorders",
     "Neurological disorders",
     "Multiple Sclerosis (MS)",
-    "Parkinson’s Disease",
+    "Parkinson's Disease",
     "Autism Spectrum Disorder (ASD)",
     "Down Syndrome"
 ]
 SEVERITY_LEVELS: List[str] = ["Mild", "Moderate", "Severe", "Profound"]
+
+# ✅ ADD THESE MAPPING DICTIONARIES
+LANGUAGE_DB_MAP = {
+    "English": "en-KE",
+    "Swahili": "sw"
+}
+
+SEVERITY_DB_MAP = {
+    "Mild": "mild",
+    "Moderate": "moderate",
+    "Severe": "severe",
+    "Profound": "profound"
+}
 
 
 @router.post("/signup", response_model=Token, status_code=status.HTTP_201_CREATED)
@@ -37,6 +50,24 @@ async def signup(user_data: UserCreate):
             )
 
         if user_data.role == "learner":
+            # ✅ Check required fields
+            if not user_data.impairment_type:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Impairment type is required for learners"
+                )
+            if not user_data.severity_level:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Severity level is required for learners"
+                )
+            if not user_data.date_of_birth:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Date of birth is required for learners"
+                )
+            
+            # Validate values
             if user_data.impairment_type not in IMPAIRMENT_TYPES:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
@@ -62,21 +93,27 @@ async def signup(user_data: UserCreate):
 
         user_id = auth_response.user.id
 
+        # ✅ Convert language to database format
+        db_language = LANGUAGE_DB_MAP.get(user_data.language_preference, "en-KE")
+
         # Insert profile
         profile_data = {
             "id": user_id,
             "full_name": user_data.full_name,
             "role": user_data.role,
-            "language_preference": user_data.language_preference,
+            "language_preference": db_language,  # ✅ Use mapped value
         }
         supabase.table("profiles").insert(profile_data).execute()
 
         # Insert learner profile if needed
         if user_data.role == "learner":
+            # ✅ Convert severity to database format (lowercase)
+            db_severity = SEVERITY_DB_MAP.get(user_data.severity_level, "moderate")
+            
             learner_data = {
                 "user_id": user_id,
                 "impairment_type": user_data.impairment_type,
-                "severity_level": user_data.severity_level,
+                "severity_level": db_severity,  # ✅ Use mapped value (lowercase)
                 "date_of_birth": user_data.date_of_birth
             }
             supabase.table("learner_profiles").insert(learner_data).execute()
