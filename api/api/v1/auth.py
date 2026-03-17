@@ -50,30 +50,15 @@ async def signup(user_data: UserCreate):
             )
 
         if user_data.role == "learner":
-            # ✅ Check required fields
-            if not user_data.impairment_type:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Impairment type is required for learners"
-                )
-            if not user_data.severity_level:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Severity level is required for learners"
-                )
-            if not user_data.date_of_birth:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Date of birth is required for learners"
-                )
+            # Values are optional now, only validate if they are provided
             
             # Validate values
-            if user_data.impairment_type not in IMPAIRMENT_TYPES:
+            if user_data.impairment_type and user_data.impairment_type not in IMPAIRMENT_TYPES:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail=f"Invalid impairment type. Must be one of {IMPAIRMENT_TYPES}"
                 )
-            if user_data.severity_level not in SEVERITY_LEVELS:
+            if user_data.severity_level and user_data.severity_level not in SEVERITY_LEVELS:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail=f"Invalid severity level. Must be one of {SEVERITY_LEVELS}"
@@ -107,14 +92,13 @@ async def signup(user_data: UserCreate):
 
         # Insert learner profile if needed
         if user_data.role == "learner":
-            # ✅ Convert severity to database format (lowercase)
             db_severity = SEVERITY_DB_MAP.get(user_data.severity_level, "moderate")
             
             learner_data = {
                 "user_id": user_id,
                 "impairment_type": user_data.impairment_type,
                 "severity_level": db_severity,  # ✅ Use mapped value (lowercase)
-                "date_of_birth": user_data.date_of_birth
+                "date_of_birth": user_data.date_of_birth if user_data.date_of_birth else None
             }
             supabase.table("learner_profiles").insert(learner_data).execute()
 

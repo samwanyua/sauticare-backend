@@ -2,18 +2,33 @@
 from typing import Optional
 import tempfile
 import os
+import wave
 from fastapi import HTTPException
-
+from piper import PiperVoice
 
 class TTSService:
     """Text-to-Speech service for generating audio from text"""
     
     def __init__(self):
         self.available_voices = {
-            "en-KE": "en-US",  # Fallback to US English
-            "sw": "sw-KE"      # Swahili
+            "en-KE": "en_US-amy-low.onnx",
+            "sw": "en_US-hfc_male-medium.onnx"
         }
-    
+        self.models_dir = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 
+            "models", "piper"
+        )
+        self.voices = {}
+        
+        # Pre-load voices initialized
+        for lang, model_file in self.available_voices.items():
+            model_path = os.path.join(self.models_dir, model_file)
+            if os.path.exists(model_path):
+                try:
+                    self.voices[lang] = PiperVoice.load(model_path)
+                except Exception as e:
+                    print(f"Failed to load piper voice {model_file}: {e}")
+                    
     async def synthesize_speech(
         self,
         text: str,
@@ -22,33 +37,26 @@ class TTSService:
     ) -> str:
         """
         Generate speech from text
-        
-        Args:
-            text: Text to synthesize
-            language: Language code (en-KE or sw)
-            output_path: Optional path to save audio
-            
-        Returns:
-            Path to generated audio file
         """
         try:
-            # For now, this is a placeholder
-            # In production, you'd integrate with a TTS service like:
-            # - Google Cloud Text-to-Speech
-            # - Amazon Polly
-            # - Microsoft Azure Speech
-            
+            if language not in self.voices:
+                language = "en-KE"
+                
+            voice = self.voices.get(language)
+            if not voice:
+                raise HTTPException(status_code=500, detail="Voice model not available")
+                
             if output_path is None:
-                # Create temporary file
-                temp_file = tempfile.NamedTemporaryFile(
-                    delete=False, 
-                    suffix=".wav"
-                )
+                temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".wav")
                 output_path = temp_file.name
-            
-            # TODO: Implement actual TTS synthesis
-            # For now, return the output path as placeholder
-            
+                temp_file.close()
+                
+            with wave.open(output_path, "wb") as wav_file:
+                wav_file.setnchannels(1)
+                wav_file.setsampwidth(2) # 16-bit
+                wav_file.setframerate(voice.config.sample_rate)
+                voice.synthesize(text, wav_file)
+                
             return output_path
             
         except Exception as e:
@@ -56,11 +64,10 @@ class TTSService:
                 status_code=500,
                 detail=f"TTS synthesis error: {str(e)}"
             )
-    
+            
     async def get_supported_languages(self) -> list:
         """Get list of supported languages"""
         return list(self.available_voices.keys())
-
 
 # Singleton instance
 tts_service = TTSService()
