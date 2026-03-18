@@ -208,5 +208,9 @@ __marimo__/
 .vercel
 
 
-/models
+# /models
 /data
+env/
+
+test_audio.wav
+test_wav.wav

@@ -1,88 +1,28 @@
-# api/ml/whisper_model.py
-import torch
-from transformers import WhisperProcessor, WhisperForConditionalGeneration
-from typing import Optional
-import numpy as np
-
+from faster_whisper import WhisperModel as FastWhisper
+import os
 
 class WhisperModel:
-    """Wrapper for Whisper ASR model"""
-    
-    def __init__(self, model_name: str = "openai/whisper-small"):
-        self.model_name = model_name
-        self.processor = None
-        self.model = None
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
-    
-    def load_model(self):
-        """Load the Whisper model and processor"""
-        if self.model is None:
-            self.processor = WhisperProcessor.from_pretrained(self.model_name)
-            self.model = WhisperForConditionalGeneration.from_pretrained(self.model_name)
-            self.model.to(self.device)
-    
-    def transcribe(
-        self,
-        audio: np.ndarray,
-        sample_rate: int = 16000,
-        language: Optional[str] = None
-    ) -> str:
-        """Transcribe audio to text"""
-        if self.model is None:
-            self.load_model()
+    def __init__(self, model_name="base.en"):
+        # We use a base model to balance speed, memory, and transcription accuracy
+        self.model_name = "base.en"
+        print(f"Loading faster-whisper model: {self.model_name}")
+        self.model = FastWhisper(self.model_name, device="cpu", compute_type="int8")
         
-        # Process audio
-        input_features = self.processor(
-            audio,
-            sampling_rate=sample_rate,
-            return_tensors="pt"
-        ).input_features.to(self.device)
+    def transcribe(self, audio, sample_rate=16000, language="en"):
+        # faster-whisper can take a path or numpy array
+        # we will use the local path when possible
+        segments, info = self.model.transcribe(audio, beam_size=5, language=language)
+        transcription = " ".join([segment.text for segment in segments])
+        return transcription.strip()
         
-        # Generate transcription
-        with torch.no_grad():
-            if language:
-                # Force specific language
-                forced_decoder_ids = self.processor.get_decoder_prompt_ids(
-                    language=language,
-                    task="transcribe"
-                )
-                predicted_ids = self.model.generate(
-                    input_features,
-                    forced_decoder_ids=forced_decoder_ids
-                )
-            else:
-                predicted_ids = self.model.generate(input_features)
-        
-        # Decode
-        transcription = self.processor.batch_decode(
-            predicted_ids,
-            skip_special_tokens=True
-        )[0]
-        
-        return transcription
-    
-    def get_confidence_scores(self, audio: np.ndarray, sample_rate: int = 16000):
-        """Get confidence scores for transcription"""
-        if self.model is None:
-            self.load_model()
-        
-        input_features = self.processor(
-            audio,
-            sampling_rate=sample_rate,
-            return_tensors="pt"
-        ).input_features.to(self.device)
-        
-        with torch.no_grad():
-            outputs = self.model.generate(
-                input_features,
-                return_dict_in_generate=True,
-                output_scores=True
-            )
-        
-        # Calculate average confidence
-        scores = torch.stack(outputs.scores, dim=1)
-        probs = torch.nn.functional.softmax(scores, dim=-1)
-        max_probs = torch.max(probs, dim=-1).values
-        avg_confidence = torch.mean(max_probs).item()
-        
-        return avg_confidence
+    def get_confidence_scores(self, audio, sample_rate=16000):
+        # We can simulate confidence using the faster-whisper segment probabilities
+        # but for simplicity since we want one score, we will transcribe and average
+        segments, info = self.model.transcribe(audio, beam_size=5)
+        # return average confidence
+        probs = [segment.no_speech_prob for segment in segments]
+        if not probs:
+            return 0.5
+        # confidence is inverse of no_speech_prob
+        avg_confidence = 1 - (sum(probs) / len(probs))
+        return float(avg_confidence)
