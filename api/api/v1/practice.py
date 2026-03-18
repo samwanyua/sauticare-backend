@@ -124,13 +124,8 @@ async def submit_phrase_attempt(
             tmp.write(content)
             tmp_path = tmp.name
         
-        # Upload to storage
-        file.file.seek(0)
-        audio_url = await storage_service.upload_audio(
-            file,
-            bucket=settings.STORAGE_BUCKET_ATTEMPTS,
-            folder=f"{learner_profile['id']}/{session_id}"
-        )
+        # Not saving to storage per user preference, using dummy URL since DB requires it
+        audio_url = "NOT_STORED"
         
         # Get attempt number
         attempts = supabase.table("phrase_attempts")\

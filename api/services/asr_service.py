@@ -5,7 +5,7 @@ from fastapi import HTTPException
 import tempfile
 import os
 from typing import Dict, Tuple
-import librosa
+from faster_whisper.audio import decode_audio
 import numpy as np
 from jiwer import wer, cer
 
@@ -50,8 +50,9 @@ class ASRService:
         try:
             model = self._get_model()
             
-            # Load audio for local model
-            audio, sr = librosa.load(audio_path, sr=16000)
+            # Load audio for local model using faster-whisper's AV decoder (no ffmpeg needed)
+            audio = decode_audio(audio_path, sampling_rate=16000)
+            sr = 16000
             
             # Map language string
             lang_code = "en" if "english" in language.lower() or language == "en-KE" else "sw"
@@ -94,13 +95,14 @@ class ASRService:
             accuracy = max(0, 1 - word_error_rate) * 100
             
             # Audio quality metrics
-            audio, sr = librosa.load(audio_path, sr=16000)
+            audio = decode_audio(audio_path, sampling_rate=16000)
+            sr = 16000
             
             # Energy calculation
-            energy = float(np.sum(audio ** 2) / len(audio))
+            energy = float(np.sum(audio ** 2) / max(len(audio), 1))
             
-            # Zero crossing rate
-            zcr = float(np.mean(librosa.feature.zero_crossing_rate(audio)))
+            # Zero crossing rate (manual numpy implementation instead of librosa)
+            zcr = float(np.mean(np.abs(np.diff(np.sign(audio))))) / 2.0
             
             # SNR estimation
             snr = self._estimate_snr(audio)
@@ -152,7 +154,8 @@ class ASRService:
     async def calculate_audio_quality(self, audio_path: str) -> float:
         """Assess audio quality (0-1 score)"""
         try:
-            audio, sr = librosa.load(audio_path, sr=16000)
+            audio = decode_audio(audio_path, sampling_rate=16000)
+            sr = 16000
             
             # Duration check
             duration = len(audio) / sr

@@ -157,6 +157,7 @@ async def delete_voice_sample(
 class TTSRequest(BaseModel):
     text: str
     language: str = "en-KE"
+    gender: str = "female"
 
 @router.post("/tts")
 async def text_to_speech(
@@ -167,7 +168,7 @@ async def text_to_speech(
     try:
         audio_path = await tts_service.synthesize_speech(
             text=request.text,
-            language=request.language
+            gender=request.gender
         )
         return FileResponse(
             path=audio_path,
