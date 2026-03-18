@@ -16,3 +16,4 @@ onnxruntime
 faster-whisper
 librosa
 jiwer
+gradio_client
