@@ -5,29 +5,29 @@ from fastapi import HTTPException
 import tempfile
 import os
 from typing import Dict, Tuple
-import librosa
+from faster_whisper.audio import decode_audio
 import numpy as np
 from jiwer import wer, cer
 
 
 class ASRService:
-    """ASR Service using Hugging Face Whisper model"""
+    """ASR Service using Hugging Face Whisper model offline"""
     
     def __init__(self):
-        self.client = None
-        self.hf_space = settings.HF_SPACE_NAME
+        self.local_model = None
     
-    def _get_client(self) -> Client:
-        """Get or create Gradio client"""
-        if self.client is None:
+    def _get_model(self):
+        if self.local_model is None:
             try:
-                self.client = Client(self.hf_space)
+                from api.ml.whisper_model import WhisperModel
+                self.local_model = WhisperModel(model_name=settings.WHISPER_MODEL_NAME)
             except Exception as e:
+                print(f"Failed to load local Whisper model: {e}")
                 raise HTTPException(
                     status_code=503,
-                    detail=f"Could not connect to ASR service: {str(e)}"
+                    detail=f"Could not load ASR model: {str(e)}"
                 )
-        return self.client
+        return self.local_model
     
     async def transcribe_with_model(
         self,
@@ -48,33 +48,27 @@ class ASRService:
             Tuple of (transcription, metrics_dict)
         """
         try:
-            client = self._get_client()
+            model = self._get_model()
             
-            # Call the Hugging Face API
-            result = client.predict(
-                audio_path=handle_file(audio_path),
-                model_name=model_name,
-                language=language,
-                etiology=etiology,
-                severity=severity,
-                use_prompt_tuning=use_prompt_tuning,
-                context_preset=context_preset,
-                custom_prompt=custom_prompt,
-                reference_text=reference_text,
-                api_name="/process_transcription_and_update_all"
+            # Load audio for local model using faster-whisper's AV decoder (no ffmpeg needed)
+            audio = decode_audio(audio_path, sampling_rate=16000)
+            sr = 16000
+            
+            # Map language string
+            lang_code = "en" if "english" in language.lower() or language == "en-KE" else "sw"
+            
+            transcription = model.transcribe(
+                audio,
+                sample_rate=sr,
+                language=lang_code
             )
             
-            # Parse results
-            # result is a tuple of 6 elements based on the API docs
-            transcription = result[0] if result else ""
+            # Get model confidence score
+            confidence = model.get_confidence_scores(audio, sample_rate=sr)
             
-            # Extract metrics from other outputs
             metrics = {
-                "raw_output": result[1] if len(result) > 1 else "",
-                "analysis": result[2] if len(result) > 2 else "",
-                "details": result[3] if len(result) > 3 else "",
-                "additional": result[4] if len(result) > 4 else "",
-                "performance": result[5] if len(result) > 5 else "",
+                "confidence": float(confidence),
+                "model_used": model.model_name
             }
             
             return transcription, metrics
@@ -101,27 +95,36 @@ class ASRService:
             accuracy = max(0, 1 - word_error_rate) * 100
             
             # Audio quality metrics
-            audio, sr = librosa.load(audio_path, sr=16000)
+            audio = decode_audio(audio_path, sampling_rate=16000)
+            sr = 16000
             
             # Energy calculation
-            energy = float(np.sum(audio ** 2) / len(audio))
+            energy = float(np.sum(audio ** 2) / max(len(audio), 1))
             
-            # Zero crossing rate
-            zcr = float(np.mean(librosa.feature.zero_crossing_rate(audio)))
+            # Zero crossing rate (manual numpy implementation instead of librosa)
+            zcr = float(np.mean(np.abs(np.diff(np.sign(audio))))) / 2.0
             
             # SNR estimation
             snr = self._estimate_snr(audio)
             
-            # Overall confidence score (weighted average)
+            # Overall confidence score (weighted average with actual ML model score if possible)
+            # Fetch model score if we can, but since this func takes audio_path, let's grab it
+            try:
+                model = self._get_model()
+                model_confidence = model.get_confidence_scores(audio, sample_rate=16000)
+            except:
+                model_confidence = 0.5
+
             confidence_score = (
-                (1 - word_error_rate) * 0.5 +
-                (1 - char_error_rate) * 0.3 +
-                min(snr / 30, 1) * 0.2
+                (1 - word_error_rate) * 0.4 +
+                (1 - char_error_rate) * 0.2 +
+                min(snr / 30, 1) * 0.1 +
+                model_confidence * 0.3
             )
             
             return {
                 "pronunciation_score": round(accuracy, 2),
-                "confidence_score": round(confidence_score, 3),
+                "confidence_score": round(float(confidence_score), 3),
                 "word_error_rate": round(word_error_rate, 3),
                 "character_error_rate": round(char_error_rate, 3),
                 "audio_quality": {
@@ -151,7 +154,8 @@ class ASRService:
     async def calculate_audio_quality(self, audio_path: str) -> float:
         """Assess audio quality (0-1 score)"""
         try:
-            audio, sr = librosa.load(audio_path, sr=16000)
+            audio = decode_audio(audio_path, sampling_rate=16000)
+            sr = 16000
             
             # Duration check
             duration = len(audio) / sr

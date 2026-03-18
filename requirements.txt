@@ -6,12 +6,13 @@ supabase
 pydantic
 pydantic-settings
 python-multipart
-librosa
-soundfile
-numpy
 jiwer
-gradio-client
 python-jose[cryptography]
 passlib[bcrypt]
 Pillow
 email-validator
+piper-tts
+onnxruntime
+faster-whisper
+librosa
+jiwer

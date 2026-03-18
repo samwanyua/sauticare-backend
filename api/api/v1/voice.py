@@ -5,6 +5,9 @@ from api.services.storage_service import StorageService
 from api.utils.supabase_client import supabase
 from api.dependencies import get_current_user, get_learner_profile, validate_audio_file
 from api.schemas.voice import VoiceUploadResponse, VoiceSampleResponse
+from api.services.tts_service import tts_service
+from fastapi.responses import FileResponse
+from pydantic import BaseModel
 from api.config import settings
 from typing import List
 import uuid
@@ -148,4 +151,32 @@ async def delete_voice_sample(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error deleting voice sample: {str(e)}"
+        )
+
+
+class TTSRequest(BaseModel):
+    text: str
+    language: str = "en-KE"
+    gender: str = "female"
+
+@router.post("/tts")
+async def text_to_speech(
+    request: TTSRequest,
+    current_user = Depends(get_current_user)
+):
+    """Generate speech from text utilizing local Piper models"""
+    try:
+        audio_path = await tts_service.synthesize_speech(
+            text=request.text,
+            gender=request.gender
+        )
+        return FileResponse(
+            path=audio_path,
+            media_type="audio/wav",
+            filename="tts_output.wav"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error generating TTS: {str(e)}"
         )

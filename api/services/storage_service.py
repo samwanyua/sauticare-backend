@@ -1,6 +1,7 @@
 # api/services/storage_service.py
 from fastapi import UploadFile, HTTPException
 from api.utils.supabase_client import supabase
+from supabase import create_client
 from api.config import settings
 import uuid
 import os
@@ -9,6 +10,7 @@ import librosa
 import soundfile as sf
 import tempfile
 
+supabase_admin = create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_KEY)
 
 class StorageService:
     """Handle file uploads to Supabase Storage"""
@@ -16,7 +18,7 @@ class StorageService:
     @staticmethod
     async def upload_audio(
         file: UploadFile, 
-        bucket: str = None,
+        bucket: Optional[str] = None,
         folder: Optional[str] = None
     ) -> str:
         """Upload audio file to Supabase Storage"""
@@ -38,14 +40,14 @@ class StorageService:
             content = await file.read()
             
             # Upload to Supabase Storage
-            result = supabase.storage.from_(bucket).upload(
+            result = supabase_admin.storage.from_(bucket).upload(
                 file_path,
                 content,
                 file_options={"content-type": file.content_type or "audio/wav"}
             )
             
             # Get public URL
-            public_url = supabase.storage.from_(bucket).get_public_url(file_path)
+            public_url = supabase_admin.storage.from_(bucket).get_public_url(file_path)
             
             return public_url
             
@@ -122,7 +124,7 @@ class StorageService:
                 if len(parts) > 1:
                     file_path = parts[1]
             
-            supabase.storage.from_(bucket).remove([file_path])
+            supabase_admin.storage.from_(bucket).remove([file_path])
             return True
         except Exception as e:
             print(f"Error deleting file: {str(e)}")
